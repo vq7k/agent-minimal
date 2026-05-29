@@ -9,3 +9,5 @@ build/
 .coverage
 .idea/
 .DS_Store
+.env
+log.json

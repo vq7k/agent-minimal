@@ -2,6 +2,10 @@
 
 最小 Python 工程化范例。演示 **uv + ruff + pytest** 的标准 Python 项目结构。
 
+> **Agent 学习 demo**：`agent.py` + 教学文档 [`docs/agent-tutorial.md`](docs/agent-tutorial.md)——一个文件看懂 Agent 的"工具调用循环"与流式输出。
+>
+> **文档规范**：本仓库 `docs/` 下由 AI 生成的文档统一遵循——经人工审核；事实性陈述用脚注 `[^…]` 标注信息源；AI 的主观取舍用 `⚠️AI决策` 标记，阅读时注意，可质疑可推翻。
+
 ## 包含
 
 - src layout（`src/word_count/`）

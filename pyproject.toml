@@ -3,7 +3,10 @@ name = "word-count"
 version = "0.1.0"
 description = "Minimal Python project demonstrating standard tooling (uv + ruff + pytest)."
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "openai>=1.0",
+    "python-dotenv>=1.0",
+]
 
 [project.scripts]
 word-count = "word_count.cli:main"
