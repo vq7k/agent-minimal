@@ -1,4 +1,4 @@
-# python-minimal
+# agent-minimal
 
 最小 Python 工程化范例。演示 **uv + ruff + pytest** 的标准 Python 项目结构。
 
@@ -19,7 +19,7 @@
 前置：装好 `uv`。macOS: `brew install uv`。Windows：见 uv 官网。
 
 ```bash
-cd python-minimal
+cd agent-minimal
 
 # 同步依赖（首次或拉新代码后）
 uv sync
@@ -39,7 +39,7 @@ uv run word-count README.md
 ## 项目结构
 
 ```
-python-minimal/
+agent-minimal/
 ├── pyproject.toml          # 单一事实源：依赖 + 工具配置
 ├── .python-version         # uv 用，pin Python 版本
 ├── .gitignore
@@ -63,7 +63,7 @@ python-minimal/
 ## 别人 clone 后跑通的最小命令
 
 ```bash
-git clone <repo> && cd python-minimal
+git clone <repo> && cd agent-minimal
 uv sync                      # 自动装 Python 3.12 + 依赖
 uv run pytest                # 全绿
 uv run ruff check            # 全绿
