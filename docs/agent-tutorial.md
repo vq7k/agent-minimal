@@ -382,6 +382,8 @@ for tc in delta.tool_calls or []:
 把这张图和 6.1~6.6 对上，你就完全看懂"为什么循环要跑两轮、每片该往哪走、工具为什么要拼"了。
 
 > **动手验证**：跑一次后打开生成的 `log.json`（代码里 `run_agent` 会把所有碎片格式化写进去），对照这张全景图逐片确认——哪片是 role、哪片是 content、哪片是 tool_calls、哪片带 finish_reason。看明白后把收集碎片那行删掉即可。
+>
+> 懒得跑也行：仓库里 [`docs/sample-log.json`](./sample-log.json) 是一份现成样例，直接对照着看。（根目录的 `log.json` 是运行产物，不入库。）
 
 > ⚠️AI决策（log.json 的写法）：选了"先把碎片攒进列表、收尾一次性 `json.dump(..., indent=2, ensure_ascii=False)`"——这样得到合法且可折叠的 JSON 数组、中文不转义。也可以逐片追加（NDJSON）或不缩进，看你想要什么；每次跑会覆盖旧文件也是 AI 定的（用 `"w"` 模式）。
 
