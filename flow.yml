@@ -40,7 +40,7 @@ stages:
             step: Command
             with:
               run: |
-                set -euo pipefail
+                set -eu
                 python -m pip install --disable-pip-version-check ruff==0.15.15 -i https://mirrors.aliyun.com/pypi/simple
                 ruff check
                 ruff format --check
@@ -70,7 +70,7 @@ stages:
             step: Command
             with:
               run: |
-                set -euo pipefail
+                set -eu
                 tar czf deploy.tgz docker-compose.yml
                 ls -lh deploy.tgz
           upload_deploy_step:
@@ -95,7 +95,7 @@ stages:
           artifactDownloadPath: "/tmp/agent-minimal-deploy.tgz"
           executeUser: "root"
           run: |
-            set -euo pipefail
+            set -eu
 
             APP=/opt/agent-minimal
             REGISTRY_HOST=crpi-hych6zm27jhqndgw.cn-hongkong.personal.cr.aliyuncs.com
