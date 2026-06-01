@@ -40,6 +40,12 @@ app.add_middleware(
 )
 
 
+@app.get("/healthz")
+def healthz() -> dict:
+    # 给云效流水线 / nginx / 监控用,只判进程在不在
+    return {"status": "ok"}
+
+
 @app.get("/agents")
 def list_agents() -> dict:
     return {"agents": sorted(AGENTS)}
