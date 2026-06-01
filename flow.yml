@@ -1,7 +1,7 @@
 # 云效流水线 —— agent-minimal Docker 部署
 #
 # 前置:
-# - 主机组:agent-minimal-prod(数字 ID 345908, YAML 使用 uuid ADKjbqhYfUzshePu)
+# - 主机组:agent-minimal-prod(数字 ID 345908, YAML 使用 uuid Ygtt0gTV53OffUF7)
 # - Codeup 代码源服务连接:xrhfc959mqp5nqye
 # - ACR 个人版服务连接:qej3ipnct3c44kni
 # - 服务器已存在 /opt/agent-minimal/.env,至少包含 DEEPSEEK_API_KEY
@@ -91,7 +91,7 @@ stages:
         with:
           artifact: $[stages.image_stage.image_job.upload_deploy_step.artifacts.deploy_bundle]
           downloadArtifact: true
-          machineGroup: "ADKjbqhYfUzshePu"
+          machineGroup: "Ygtt0gTV53OffUF7"
           artifactDownloadPath: "/tmp/agent-minimal-deploy.tgz"
           executeUser: "root"
           run: |

@@ -23,7 +23,7 @@
 
 ## 云效变量
 
-YAML 已写死 Codeup 服务连接 `xrhfc959mqp5nqye`、ACR 服务连接 `qej3ipnct3c44kni` 和主机组 `ADKjbqhYfUzshePu`。
+YAML 已写死 Codeup 服务连接 `xrhfc959mqp5nqye`、ACR 服务连接 `qej3ipnct3c44kni` 和主机组 `Ygtt0gTV53OffUF7`。
 
 如果服务器 Docker 尚未登录 ACR,再加两个加密变量:
 
