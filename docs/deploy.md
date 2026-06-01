@@ -14,7 +14,7 @@
 
 0. `代码源`:从 Codeup 仓库 `agent-minimal/main` 拉代码,push 到 `main` 自动触发
 1. `代码检查`:安装 Python 3.12,执行 `uv sync --frozen`,`ruff check`,`ruff format --check`
-2. `镜像构建`:使用 `ACRDockerBuild` 构建并推送 Docker 镜像
+2. `镜像构建`:使用 `DockerBuildPushACR` 构建并推送 Docker 镜像
 3. `部署包`:上传 `docker-compose.yml` 作为部署制品
 4. `主机部署`:VMDeploy 到主机组 `345908`,在 `/opt/agent-minimal` 执行 `docker compose pull && up -d`
 5. `验证`:容器内 `/healthz` 和 Caddy 到容器的 `/healthz`
@@ -23,12 +23,7 @@
 
 ## 云效变量
 
-流水线需要两个变量:
-
-```bash
-CODEUP_SERVICE_CONNECTION_ID=<Codeup 代码源服务连接 ID>
-ACR_SERVICE_CONNECTION_ID=<阿里云镜像仓库个人版服务连接 ID>
-```
+YAML 已写死 Codeup 服务连接 `xrhfc959mqp5nqye`、ACR 服务连接 `qej3ipnct3c44kni` 和主机组 `ADKjbqhYfUzshePu`。
 
 如果服务器 Docker 尚未登录 ACR,再加两个加密变量:
 

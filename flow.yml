@@ -1,9 +1,9 @@
 # 云效流水线 —— agent-minimal Docker 部署
 #
 # 前置:
-# - 主机组:345908(轻量服务器)
-# - Codeup 代码源服务连接:在云效变量 CODEUP_SERVICE_CONNECTION_ID 中配置
-# - ACR 个人版服务连接:在云效变量 ACR_SERVICE_CONNECTION_ID 中配置
+# - 主机组:agent-minimal-prod(数字 ID 345908, YAML 使用 uuid ADKjbqhYfUzshePu)
+# - Codeup 代码源服务连接:xrhfc959mqp5nqye
+# - ACR 个人版服务连接:qej3ipnct3c44kni
 # - 服务器已存在 /opt/agent-minimal/.env,至少包含 DEEPSEEK_API_KEY
 
 sources:
@@ -16,7 +16,7 @@ sources:
       - push
     certificate:
       type: serviceConnection
-      serviceConnection: ${CODEUP_SERVICE_CONNECTION_ID}
+      serviceConnection: xrhfc959mqp5nqye
 
 defaultWorkspace: agent_minimal_repo
 
@@ -57,14 +57,15 @@ stages:
         steps:
           docker_build_step:
             name: "ACR Docker build + push"
-            step: ACRDockerBuild
+            step: DockerBuildPushACR
             with:
-              serviceConnection: ${ACR_SERVICE_CONNECTION_ID}
+              serviceConnection: qej3ipnct3c44kni
               region: cn-hongkong
               artifact: agent_minimal_image
               dockerRegistry: crpi-hych6zm27jhqndgw.cn-hongkong.personal.cr.aliyuncs.com/qv7k/agent-minimal
               dockerTag: ${CI_COMMIT_ID}
               dockerfilePath: Dockerfile
+              cacheType: remote
           package_deploy_step:
             name: "打包部署文件"
             step: Command
@@ -77,9 +78,9 @@ stages:
             name: "上传部署包"
             step: ArtifactUpload
             with:
-              type: flowPublic
+              uploadType: flowPublic
               artifact: deploy_bundle
-              path:
+              filePath:
                 - deploy.tgz
 
   deploy_stage:
@@ -89,8 +90,9 @@ stages:
         name: "Docker Compose 部署到轻量服务器"
         component: VMDeploy
         with:
+          artifact: $[stages.image_stage.image_job.upload_deploy_step.artifacts.deploy_bundle]
           downloadArtifact: true
-          machineGroup: "345908"
+          machineGroup: "ADKjbqhYfUzshePu"
           artifactDownloadPath: "/tmp/agent-minimal-deploy.tgz"
           executeUser: "root"
           run: |
@@ -134,4 +136,3 @@ stages:
             docker exec agent-minimal python -c "import urllib.request; r=urllib.request.urlopen('http://localhost:8000/healthz',timeout=3); print(r.read().decode()); exit(0 if r.status==200 else 1)"
             docker exec ftai-caddy wget -qO- --timeout=3 http://agent-minimal:8000/healthz
             echo "deploy ok: ${REGISTRY_HOST}/qv7k/agent-minimal:${IMAGE_TAG}"
-          artifact: $[stages.image_stage.image_job.upload_deploy_step.artifacts.deploy_bundle]
