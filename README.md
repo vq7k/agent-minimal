@@ -1,6 +1,6 @@
 # agent-minimal
 
-最小**多 Agent 后端骨架**:FastAPI 路由 + 4 个完全独立的 agent 模块,经 SSE 对外供前端调用。
+最小**多 Agent 应用骨架**:FastAPI 路由 + 4 个完全独立的 agent 模块 + React 前端工作台,经 SSE 对外供前端调用。
 
 各 agent 用什么 LLM、怎么调工具、怎么管理记忆,完全由各负责人自己决定。骨架只负责路由 + 契约。
 
@@ -8,6 +8,7 @@
 
 ```
 server.py             FastAPI 路由,把 /agents/{name}/chat 分发到对应模块的 chat()
+frontend/             Vite + React + shadcn/ui 风格组件,本地开发走 Vite proxy
 agents/               4 个独立模块,互不 import
 ├── alpha/__init__.py     def chat(messages) -> Iterator[str]
 ├── bravo/__init__.py
@@ -18,10 +19,24 @@ docs/api-contract.md  前端对接契约(REST + SSE 事件格式)
 
 ## 跑起来
 
+后端:
+
 ```bash
 uv sync
 uv run uvicorn server:app --reload
 ```
+
+前端:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+本地访问 `http://127.0.0.1:5173`。Vite 会把 `/agents` 和 `/healthz` 代理到 `http://127.0.0.1:8000`。
+
+线上访问 `https://agent.x-lin7.com/`。React build 后由 FastAPI 同容器托管,API 仍是同域 `/agents/...`。
 
 冒烟:
 

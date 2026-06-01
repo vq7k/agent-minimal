@@ -1,3 +1,12 @@
+# 构建 React 前端静态文件
+FROM node:22-slim AS frontend-build
+
+WORKDIR /frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm config set registry https://registry.npmmirror.com && npm ci
+COPY frontend/ ./
+RUN npm run lint && npm test -- --run && npm run build
+
 # Python 3.12-slim,跟 ftai-ai 一致
 FROM python:3.12-slim
 
@@ -13,6 +22,7 @@ RUN uv sync --frozen --no-dev
 # 再拷源码
 COPY server.py ./
 COPY agents/ ./agents/
+COPY --from=frontend-build /frontend/dist ./frontend/dist
 
 ENV PYTHONUNBUFFERED=1
 EXPOSE 8000
