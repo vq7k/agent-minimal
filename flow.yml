@@ -2,8 +2,23 @@
 #
 # 前置:
 # - 主机组:345908(轻量服务器)
+# - Codeup 代码源服务连接:在云效变量 CODEUP_SERVICE_CONNECTION_ID 中配置
 # - ACR 个人版服务连接:在云效变量 ACR_SERVICE_CONNECTION_ID 中配置
 # - 服务器已存在 /opt/agent-minimal/.env,至少包含 DEEPSEEK_API_KEY
+
+sources:
+  agent_minimal_repo:
+    type: codeup
+    name: agent-minimal
+    endpoint: https://codeup.aliyun.com/62cd1e4411fc0f0c9e2b51d0/agent/agent-minimal.git
+    branch: main
+    triggerEvents:
+      - push
+    certificate:
+      type: serviceConnection
+      serviceConnection: ${CODEUP_SERVICE_CONNECTION_ID}
+
+defaultWorkspace: agent_minimal_repo
 
 stages:
   lint_stage:

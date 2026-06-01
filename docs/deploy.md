@@ -12,6 +12,7 @@
 
 新流水线使用仓库根目录 [flow.yml](../flow.yml):
 
+0. `代码源`:从 Codeup 仓库 `agent-minimal/main` 拉代码,push 到 `main` 自动触发
 1. `代码检查`:安装 Python 3.12,执行 `uv sync --frozen`,`ruff check`,`ruff format --check`
 2. `镜像构建`:使用 `ACRDockerBuild` 构建并推送 Docker 镜像
 3. `部署包`:上传 `docker-compose.yml` 作为部署制品
@@ -22,9 +23,10 @@
 
 ## 云效变量
 
-流水线需要一个变量:
+流水线需要两个变量:
 
 ```bash
+CODEUP_SERVICE_CONNECTION_ID=<Codeup 代码源服务连接 ID>
 ACR_SERVICE_CONNECTION_ID=<阿里云镜像仓库个人版服务连接 ID>
 ```
 
