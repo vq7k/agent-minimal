@@ -27,8 +27,8 @@ stages:
       ruff_job:
         name: "ruff lint + format"
         runsOn:
-          group: public/cn-beijing
-          container: build-steps-public-registry.cn-beijing.cr.aliyuncs.com/build-steps/alinux3:latest
+          group: public/cn-hongkong
+          container: build-steps-public-registry.cn-hongkong.cr.aliyuncs.com/build-steps/alinux3:latest
         steps:
           setup_python_step:
             name: "安装 Python 3.12"
@@ -41,10 +41,9 @@ stages:
             with:
               run: |
                 set -euo pipefail
-                pip install uv -i https://mirrors.aliyun.com/pypi/simple
-                uv sync --frozen
-                uv run ruff check
-                uv run ruff format --check
+                python -m pip install --disable-pip-version-check ruff==0.15.15 -i https://mirrors.aliyun.com/pypi/simple
+                ruff check
+                ruff format --check
 
   image_stage:
     name: "镜像构建"
@@ -52,8 +51,8 @@ stages:
       image_job:
         name: "构建并推送 Docker 镜像"
         runsOn:
-          group: public/cn-beijing
-          container: build-steps-public-registry.cn-beijing.cr.aliyuncs.com/build-steps/alinux3:latest
+          group: public/cn-hongkong
+          container: build-steps-public-registry.cn-hongkong.cr.aliyuncs.com/build-steps/alinux3:latest
         steps:
           docker_build_step:
             name: "ACR Docker build + push"
