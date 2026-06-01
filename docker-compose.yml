@@ -1,0 +1,35 @@
+# agent-minimal —— 单容器,复用 from-fullstack-to-ai 的 caddy + 网络(最简方案)
+# - 接入已有网络 infra_ftai-net(ftai compose 创建,external 引用)
+# - ftai 的 caddy 反代 agent.x-lin7.com → agent-minimal:8000(site block 由 ftai 侧加)
+#
+# 部署(云效流水线 or 手动):
+#   export IMAGE_TAG=latest
+#   docker compose pull && docker compose up -d
+
+services:
+  agent-minimal:
+    image: ${REGISTRY_HOST:-crpi-hych6zm27jhqndgw.cn-hongkong.personal.cr.aliyuncs.com}/qv7k/agent-minimal:${IMAGE_TAG:-latest}
+    container_name: agent-minimal
+    restart: unless-stopped
+    expose:
+      - "8000"
+    env_file:
+      - .env  # DEEPSEEK_API_KEY
+    healthcheck:
+      # python:3.12-slim 没 curl/wget,用 Python urllib(跟 ftai-ai 一致)
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; r=urllib.request.urlopen('http://localhost:8000/healthz',timeout=2); exit(0 if r.status==200 else 1)"
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    networks:
+      - ftai-net
+
+networks:
+  ftai-net:
+    external: true
+    name: infra_ftai-net   # 服务器上 ftai(compose 项目名 infra)创建的网络真实名

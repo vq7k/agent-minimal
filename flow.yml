@@ -1,13 +1,11 @@
-# 云效流水线 —— agent-minimal
-# 三段:lint(ruff)→ 打包源码 → 部署到轻量服务器 systemd
+# 云效流水线 —— agent-minimal Docker 部署
 #
-# 两个占位需要你在云效控制台创建对应资源后填回(只填一次):
-#   <SERVICE_CONNECTION_ID> —— 通用制品仓库的服务连接(首次创建)
-#   <MACHINE_GROUP_ID>       —— 主机组的 ID(关联你的轻量服务器)
-# 详细步骤见 docs/deploy.md。
+# 前置:
+# - 主机组:345908(轻量服务器)
+# - ACR 个人版服务连接:在云效变量 ACR_SERVICE_CONNECTION_ID 中配置
+# - 服务器已存在 /opt/agent-minimal/.env,至少包含 DEEPSEEK_API_KEY
 
 stages:
-  # ---------- 1. 代码检查 ----------
   lint_stage:
     name: "代码检查"
     jobs:
@@ -27,84 +25,98 @@ stages:
             step: Command
             with:
               run: |
+                set -euo pipefail
                 pip install uv -i https://mirrors.aliyun.com/pypi/simple
                 uv sync --frozen
                 uv run ruff check
                 uv run ruff format --check
 
-  # ---------- 2. 构建 ----------
-  build_stage:
-    name: "构建"
+  image_stage:
+    name: "镜像构建"
     jobs:
-      package_job:
-        name: "打包源码为 tgz"
+      image_job:
+        name: "构建并推送 Docker 镜像"
         runsOn:
           group: public/cn-beijing
           container: build-steps-public-registry.cn-beijing.cr.aliyuncs.com/build-steps/alinux3:latest
         steps:
-          package_step:
-            name: "tar 打包"
+          docker_build_step:
+            name: "ACR Docker build + push"
+            step: ACRDockerBuild
+            with:
+              serviceConnection: ${ACR_SERVICE_CONNECTION_ID}
+              region: cn-hongkong
+              artifact: agent_minimal_image
+              dockerRegistry: crpi-hych6zm27jhqndgw.cn-hongkong.personal.cr.aliyuncs.com/qv7k/agent-minimal
+              dockerTag: ${CI_COMMIT_ID}
+              dockerfilePath: Dockerfile
+          package_deploy_step:
+            name: "打包部署文件"
             step: Command
             with:
               run: |
-                # 打包应用源码,排除虚拟环境、缓存、git、本地 .env(防止泄密)
-                tar czf package.tgz \
-                  --exclude='./.venv' \
-                  --exclude='./.git' \
-                  --exclude='./__pycache__' \
-                  --exclude='./*/__pycache__' \
-                  --exclude='./.ruff_cache' \
-                  --exclude='./.pytest_cache' \
-                  --exclude='./.idea' \
-                  --exclude='./.env' \
-                  .
-                ls -lh package.tgz
-          artifact_upload_step:
-            name: "上传制品"
+                set -euo pipefail
+                tar czf deploy.tgz docker-compose.yml
+                ls -lh deploy.tgz
+          upload_deploy_step:
+            name: "上传部署包"
             step: ArtifactUpload
             with:
-              uploadType: packages
-              serviceConnection: "<SERVICE_CONNECTION_ID>"
-              repo: flow_generic_repo
-              artifact: "Artifacts_${PIPELINE_ID}"
-              filePath: "package.tgz"
-              version: "${BUILD_NUMBER}"
+              type: flowPublic
+              artifact: deploy_bundle
+              path:
+                - deploy.tgz
 
-  # ---------- 3. 部署到轻量服务器 ----------
   deploy_stage:
     name: "部署"
     jobs:
       vm_deploy_job:
-        name: "VMDeploy 到 systemd"
+        name: "Docker Compose 部署到轻量服务器"
         component: VMDeploy
         with:
           downloadArtifact: true
-          machineGroup: "<MACHINE_GROUP_ID>"
-          artifactDownloadPath: "/tmp/agent-minimal-package.tgz"
+          machineGroup: "345908"
+          artifactDownloadPath: "/tmp/agent-minimal-deploy.tgz"
           executeUser: "root"
-          # 该脚本在目标主机上以 root 执行(部署是个 idempotent 操作)
           run: |
             set -euo pipefail
+
             APP=/opt/agent-minimal
+            REGISTRY_HOST=crpi-hych6zm27jhqndgw.cn-hongkong.personal.cr.aliyuncs.com
+            IMAGE_TAG="${CI_COMMIT_ID}"
+
             mkdir -p "$APP"
-            tar xzf /tmp/agent-minimal-package.tgz -C "$APP"
-            rm -f /tmp/agent-minimal-package.tgz
+            tar xzf /tmp/agent-minimal-deploy.tgz -C "$APP"
+            rm -f /tmp/agent-minimal-deploy.tgz
             cd "$APP"
 
-            # 同步依赖(uv 用 lockfile,生产可重复)
-            /root/.local/bin/uv sync --frozen
-
-            # 首次部署:若 systemd unit 还没装,自动 enable
-            if [ ! -e /etc/systemd/system/agent-minimal.service ]; then
-              cp deploy/agent-minimal.service /etc/systemd/system/
-              systemctl daemon-reload
-              systemctl enable agent-minimal
+            if [ ! -f .env ]; then
+              echo "missing $APP/.env; create it with DEEPSEEK_API_KEY before deploying" >&2
+              exit 1
             fi
 
-            systemctl restart agent-minimal
-            sleep 3
-            systemctl is-active agent-minimal
+            if [ -n "${REGISTRY_USERNAME:-}" ] && [ -n "${REGISTRY_PASSWORD:-}" ]; then
+              echo "$REGISTRY_PASSWORD" | docker login --username "$REGISTRY_USERNAME" --password-stdin "$REGISTRY_HOST"
+            fi
 
-            # 健康检查:起不来流水线就红
-            curl -fsS http://127.0.0.1:8000/healthz
-          artifact: $[stages.build_stage.package_job.artifact_upload_step.artifacts.Artifacts_${PIPELINE_ID}]
+            REGISTRY_HOST="$REGISTRY_HOST" IMAGE_TAG="$IMAGE_TAG" docker compose pull agent-minimal
+            REGISTRY_HOST="$REGISTRY_HOST" IMAGE_TAG="$IMAGE_TAG" docker compose up -d --remove-orphans
+            REGISTRY_HOST="$REGISTRY_HOST" IMAGE_TAG="$IMAGE_TAG" docker compose ps
+
+            for i in $(seq 1 30); do
+              status="$(docker inspect -f '{{.State.Health.Status}}' agent-minimal 2>/dev/null || true)"
+              if [ "$status" = "healthy" ]; then
+                break
+              fi
+              if [ "$i" = "30" ]; then
+                echo "agent-minimal health status: $status" >&2
+                docker logs --tail 100 agent-minimal >&2 || true
+                exit 1
+              fi
+              sleep 2
+            done
+
+            docker exec agent-minimal python -c "import urllib.request; r=urllib.request.urlopen('http://localhost:8000/healthz',timeout=3); print(r.read().decode()); exit(0 if r.status==200 else 1)"
+            docker exec ftai-caddy wget -qO- --timeout=3 http://agent-minimal:8000/healthz
+            echo "deploy ok: ${REGISTRY_HOST}/qv7k/agent-minimal:${IMAGE_TAG}"
+          artifact: $[stages.image_stage.image_job.upload_deploy_step.artifacts.deploy_bundle]

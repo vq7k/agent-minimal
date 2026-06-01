@@ -23,6 +23,8 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+# 云效流水线的 SetupPython 会把 Python 装在工作区,排除掉以免 ruff 扫到
+extend-exclude = ["Python", ".venv"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "W"]
