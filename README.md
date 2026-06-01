@@ -1,72 +1,47 @@
 # agent-minimal
 
-最小 Python 工程化范例。演示 **uv + ruff + pytest** 的标准 Python 项目结构。
+最小**多 Agent 后端骨架**:FastAPI 路由 + 4 个完全独立的 agent 模块,经 SSE 对外供前端调用。
 
-> **Agent 学习 demo**：`agent.py` + 教学文档 [`docs/agent-tutorial.md`](docs/agent-tutorial.md)——一个文件看懂 Agent 的"工具调用循环"与流式输出。
->
-> **文档规范**：本仓库 `docs/` 下由 AI 生成的文档统一遵循——经人工审核；事实性陈述用脚注 `[^…]` 标注信息源；AI 的主观取舍用 `⚠️AI决策` 标记，阅读时注意，可质疑可推翻。
+各 agent 用什么 LLM、怎么调工具、怎么管理记忆,完全由各负责人自己决定。骨架只负责路由 + 契约。
 
-## 包含
+## 结构
 
-- src layout（`src/word_count/`）
-- `pyproject.toml`（项目元数据 + dev 依赖 + ruff/pytest 配置都在这一个文件）
-- `ruff`（lint + format 一把梭）
-- `pytest`（单元测试）
-- CLI 入口（标准库 argparse，零运行时依赖）
+```
+server.py             FastAPI 路由,把 /agents/{name}/chat 分发到对应模块的 chat()
+agents/               4 个独立模块,互不 import
+├── alpha/__init__.py     def chat(messages) -> Iterator[str]
+├── bravo/__init__.py
+├── charlie/__init__.py
+└── delta/__init__.py
+docs/api-contract.md  前端对接契约(REST + SSE 事件格式)
+```
 
-## 使用
-
-前置：装好 `uv`。macOS: `brew install uv`。Windows：见 uv 官网。
+## 跑起来
 
 ```bash
-cd agent-minimal
-
-# 同步依赖（首次或拉新代码后）
 uv sync
-
-# 跑测试
-uv run pytest
-
-# 跑 lint
-uv run ruff check
-uv run ruff format --check
-
-# 跑 CLI（两种姿势）
-echo "hello world" | uv run word-count -
-uv run word-count README.md
+uv run uvicorn server:app --reload
 ```
 
-## 项目结构
-
-```
-agent-minimal/
-├── pyproject.toml          # 单一事实源：依赖 + 工具配置
-├── .python-version         # uv 用，pin Python 版本
-├── .gitignore
-├── src/
-│   └── word_count/
-│       ├── __init__.py
-│       ├── core.py         # 纯函数 + dataclass
-│       └── cli.py          # argparse CLI
-└── tests/
-    └── test_core.py        # pytest 测试
-```
-
-## 学习要点
-
-1. **单一事实源**：所有元数据 / 依赖 / 工具配置都在 `pyproject.toml`。没有 `setup.py` / `setup.cfg` / `requirements.txt` / `tox.ini` 等散装文件。
-2. **src layout**：包代码放在 `src/<pkg>/`，避免"误 import 本地目录而非已安装包"的坑。
-3. **lockfile**：`uv sync` 会生成/读 `uv.lock`，保证别人 clone 后依赖完全一致。
-4. **scripts entry**：`[project.scripts]` 让 `uv run word-count` 直接调用，不用 `python -m word_count.cli`。
-5. **dev 依赖隔离**：`[dependency-groups]` 里的 dev 工具（pytest/ruff）不混入运行时依赖。
-
-## 别人 clone 后跑通的最小命令
+冒烟:
 
 ```bash
-git clone <repo> && cd agent-minimal
-uv sync                      # 自动装 Python 3.12 + 依赖
-uv run pytest                # 全绿
-uv run ruff check            # 全绿
+curl http://127.0.0.1:8000/agents
+curl -N -X POST http://127.0.0.1:8000/agents/alpha/chat \
+  -H 'Content-Type: application/json' \
+  -d '{"messages":[{"role":"user","content":"hi"}]}'
 ```
 
-如果以上三条任一条挂了，说明工程化没对齐。
+完整接口见 [docs/api-contract.md](docs/api-contract.md)。
+
+## 给 agent 负责人
+
+只改 `agents/<你的名字>/__init__.py`,实现:
+
+```python
+def chat(messages: list[dict]) -> Iterator[str]:
+    yield 'data: {"type":"text","delta":"..."}\n\n'
+    yield 'data: {"type":"done"}\n\n'
+```
+
+铁律:**别 import 别人的 agent 模块**、**别改 server.py**。需要新依赖加到 `pyproject.toml` 的 `[project.dependencies]`,跑 `uv sync`。

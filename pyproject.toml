@@ -1,23 +1,22 @@
 [project]
-name = "word-count"
+name = "agent-minimal"
 version = "0.1.0"
-description = "Minimal Python project demonstrating standard tooling (uv + ruff + pytest)."
+description = "Minimal multi-agent backend skeleton: FastAPI routing + 4 independent agent modules."
 requires-python = ">=3.12"
 dependencies = [
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+    # alpha:
     "openai>=1.0",
     "python-dotenv>=1.0",
 ]
 
-[project.scripts]
-word-count = "word_count.cli:main"
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+# 应用模式:本项目就是个跑起来的服务,不需要打成 pip 包
+[tool.uv]
+package = false
 
 [dependency-groups]
 dev = [
-    "pytest>=8",
     "ruff>=0.8",
 ]
 
@@ -27,7 +26,3 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "W"]
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-addopts = "-ra --strict-markers"
