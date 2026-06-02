@@ -5,13 +5,16 @@ Vite + React + TypeScript + shadcn/ui 风格组件。
 ## 目录
 
 ```text
-src/App.tsx                         只挂载 AgentWorkbench
-src/features/chat/hooks/            业务逻辑:加载 runtime、发送消息、维护状态
-src/features/chat/components/       页面组件:布局、侧栏、消息区、消息气泡
-src/features/chat/chat-state.ts     纯状态转换,可单测
-src/lib/chat-stream.ts              POST SSE streaming 请求封装
+src/app/                            应用入口、页面路由、agent 导航
+src/agents/alpha/                   Alpha 独立前端:page/api/types
+src/agents/bravo/                   Bravo 独立前端:page/api/types
+src/agents/charlie/                 Charlie 独立前端:page/api/types
+src/agents/delta/                   Delta 独立前端:page/api/types
 src/components/ui/                  shadcn/ui 风格基础组件
+src/lib/utils.ts                    无业务工具,目前仅 cn()
 ```
+
+协作规则:4 个 agent 负责人只改自己的 `src/agents/<name>/`。不要跨目录 import 其他 agent 的代码；公共聊天逻辑宁可重复，也不要上共享抽象。
 
 ## 本地开发
 
