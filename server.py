@@ -27,19 +27,19 @@ AGENTS: dict[str, Callable[[list[dict]], Iterator[str]]] = {
     "charlie": charlie.chat,
     "delta": delta.chat,
 }
-
+#前端可部署的静态文件目录
 FRONTEND_DIST = Path(__file__).resolve().parent / "frontend" / "dist"
 
 
 class ChatRequest(BaseModel):
-    messages: list[dict]
+    messages: list[dict]#原始作用是告诉你这个变量是什么类型的，pydantic库强制检查这个类型
 
 
 def create_app(frontend_dist: Path = FRONTEND_DIST) -> FastAPI:
     app = FastAPI(title="agent-minimal")
     app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],  # 联调放开,上线按前端域名收紧
+        CORSMiddleware,#cose中间键
+        allow_origins=["*"],  # 联调放开,上线按前端域名收紧（现在允许所有前端访问）
         allow_methods=["*"],
         allow_headers=["*"],
     )
@@ -55,11 +55,14 @@ def create_app(frontend_dist: Path = FRONTEND_DIST) -> FastAPI:
 
     @app.post("/agents/{name}/chat")
     def chat(name: str, req: ChatRequest) -> StreamingResponse:
+        #post的参数是客户端发送给服务端的数据，返回值是服务器返回客户端的数据
+        #fastapi会自动把Json格式的数据解析成list，dict，而chatrequest是list[dict]所以fastapi能够自动把json解析成Chatrequest
         handler = AGENTS.get(name)
         if handler is None:
             raise HTTPException(status_code=404, detail=f"unknown agent: {name}")
 
         stream: Iterator[str] = handler(req.messages)
+        #FastApi需要知道怎么把一个迭代器生成的内容通过http请求分块发过去，所以需要用Fastapi这个StreamingResponse类
         return StreamingResponse(stream, media_type="text/event-stream")
 
     index_html = frontend_dist / "index.html"
@@ -74,6 +77,7 @@ def create_app(frontend_dist: Path = FRONTEND_DIST) -> FastAPI:
 
         @app.get("/{full_path:path}")
         def frontend_fallback(full_path: str) -> FileResponse:
+            """有其他文件就返回原文件"""
             requested_file = frontend_dist / full_path
             if requested_file.is_file():
                 return FileResponse(requested_file)
