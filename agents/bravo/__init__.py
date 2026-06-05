@@ -79,6 +79,7 @@ def chat(messages: list[dict]) -> Iterator[str]:
     # 所以用"队列搭桥"——回调往队列塞,生成器从队列取并 yield 成 SSE。
     q: queue.Queue = queue.Queue()
     _SENTINEL = object()
+
     def emit(text: str):
         if text:
             q.put(text)
@@ -87,7 +88,7 @@ def chat(messages: list[dict]) -> Iterator[str]:
         try:
             agent = Agent(memory=_MEMORY)
             if mode == "loop":
-                #下面这两个方法都留了一个hook，可以通过编写emit这个函数，把代码挂在预留的hook上运行
+                # 下面这两个方法都留了一个hook，可以通过编写emit这个函数，把代码挂在预留的hook上运行
                 agent.run_loop_streamed(goal, emit)
             else:
                 agent.run_graph_streamed(goal, emit)
@@ -95,7 +96,8 @@ def chat(messages: list[dict]) -> Iterator[str]:
             emit(f"\n\n[出错] {type(e).__name__}: {e}")
         finally:
             q.put(_SENTINEL)
-    #启动一个线程去执行worker函数里的代码
+
+    # 启动一个线程去执行worker函数里的代码
     threading.Thread(target=worker, daemon=True).start()
 
     while True:

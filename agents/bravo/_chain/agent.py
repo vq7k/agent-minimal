@@ -244,6 +244,10 @@ class Agent:
                         result=extra,
                     )
                 )
+                # 写记忆:remember 节点跑完 → 真正存进长期记忆(和线性 loop 一致)。
+                # remember 工具返回 {"remember": 事实},这里落库。
+                if isinstance(extra, dict) and "remember" in extra:
+                    self.memory.add(extra["remember"])
                 display("done", node, extra, entry)
 
         registry = build_default_registry()
@@ -273,7 +277,8 @@ class Agent:
 
         返回值新增 trajectory / schedule,使 DAG 路径和线性路径一样【事后可复盘】。
         """
-        nodes = self.llm.make_graph(user_input)
+        # 读记忆:规划时把已记住的事实当已知条件喂给模型
+        nodes = self.llm.make_graph(user_input, memory=self.memory.get_all())
         if not nodes:
             return {
                 "graph": [],
@@ -304,7 +309,8 @@ class Agent:
         traj_text = "\n".join(
             f"{n['id']}({n['tool']})→ 结果: {results.get(n['id'])}" for n in nodes
         )
-        final_result = self.llm.summarize(user_input, traj_text)
+        # 读记忆:汇总时也把记忆喂进去,最终回复可引用
+        final_result = self.llm.summarize(user_input, traj_text, memory=self.memory.get_all())
         return {
             "graph": nodes,
             "results": results,
@@ -352,7 +358,8 @@ class Agent:
     def run_graph_streamed(self, user_input: str, emit):
         """DAG(AoT)动态调度的流式版:规划 → 并行调度过程 → 复盘 → 最终汇总,全经 emit 吐出。"""
         emit("🧭 正在规划依赖图…\n")
-        nodes = self.llm.make_graph(user_input)
+        # 读记忆:规划时把已记住的事实当已知条件喂给模型
+        nodes = self.llm.make_graph(user_input, memory=self.memory.get_all())
         if not nodes:
             emit("规划失败:没有生成有效的依赖图。")
             return
@@ -379,9 +386,14 @@ class Agent:
         emit("\n🔭 调度复盘(完成顺序 / 区间ms / 并行情况):\n")
         emit(self._format_parallel_summary())
 
+        # 若本轮往记忆里写过东西,显式展示一下(可见性)
+        if self.memory.get_all():
+            emit("🧠 长期记忆: " + "；".join(self.memory.get_all()) + "\n")
+
         traj_text = "\n".join(
             f"{n['id']}({n['tool']})→ 结果: {results.get(n['id'])}" for n in nodes
         )
         emit("\n💬 ")
-        for delta in self.llm.summarize_stream(user_input, traj_text):
+        # 读记忆:汇总时也把记忆喂进去,最终回复可引用
+        for delta in self.llm.summarize_stream(user_input, traj_text, memory=self.memory.get_all()):
             emit(delta)

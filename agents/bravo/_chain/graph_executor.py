@@ -64,7 +64,7 @@ class GraphExecutor:
         self.llm = llm
         self.registry = registry
         self.max_workers = max_workers
-        #存的是时间发生的时候该调哪个函数
+        # 存的是时间发生的时候该调哪个函数
         self.on_event = on_event or (lambda *a, **k: None)
 
     def run(self, nodes: list[dict]) -> dict:

@@ -333,8 +333,9 @@ class LLMClient:
         )
         user = f"目标：{goal}"
         if memory:
-            user += "\n\n【你已经记住的事实（规划时可直接引用，不必再安排步骤去获取）】\n" + "\n".join(
-                f"- {m}" for m in memory
+            user += (
+                "\n\n【你已经记住的事实（规划时可直接引用，不必再安排步骤去获取）】\n"
+                + "\n".join(f"- {m}" for m in memory)
             )
 
         response = self.client.chat.completions.create(
