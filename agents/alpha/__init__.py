@@ -1,9 +1,9 @@
-"""alpha agent —— S1 能力边界编排入口。"""
+"""alpha agent —— 能力边界与最简规划编排入口。"""
 
 import json
 from collections.abc import Iterator
 
-from agents.alpha._core import intent, llm
+from agents.alpha._core import intent, itinerary, llm
 
 SYSTEM_PROMPT = "你是一个友好的中文助手,回答简洁。"
 OUT_OF_SCOPE_REPLY = (
@@ -25,6 +25,11 @@ def chat(messages: list[dict]) -> Iterator[str]:
     kind = intent.route(messages)
     if kind == "out_of_scope":
         yield _text(OUT_OF_SCOPE_REPLY)
+        yield _done()
+        return
+
+    if kind == "plan":
+        yield _text(itinerary.generate(messages))
         yield _done()
         return
 

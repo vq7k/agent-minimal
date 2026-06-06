@@ -1,7 +1,6 @@
 """S2 最简规划最小回归：只守七段行程 schema、降级和 chat 的 plan 分支。
 
-这些测试是 TDD 的 RED 阶段：当前生产代码还没有 `itinerary.py`，`chat()`
-的 `plan` 分支也还在走普通聊天。实现 S2 后，它们应转绿。
+这些测试最初用于 TDD 的 RED 阶段；S2 实现后，它们作为最小回归保留。
 
 测试边界：
 - 不测真实 LLM 规划质量。
@@ -25,8 +24,8 @@ from agents.alpha._core import llm  # noqa: E402
 def _load_itinerary():
     """加载 S2 新模块。
 
-    当前失败在这里是正确的：它说明 S2 还没有实现
-    `agents.alpha._core.itinerary`。
+    如果这里失败，通常说明 S2 行程模块缺失；若失败信息不是缺模块，
+    而是 Python path/IDEA 配置错误，才需要排查环境。
     """
     try:
         return importlib.import_module("agents.alpha._core.itinerary")
