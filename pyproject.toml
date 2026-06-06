@@ -9,6 +9,7 @@ dependencies = [
     # alpha:
     "openai>=1.0",
     "python-dotenv>=1.0",
+    "psycopg[binary]>=3.2",
 ]
 
 # 应用模式:本项目就是个跑起来的服务,不需要打成 pip 包
