@@ -9,6 +9,7 @@
   2. 在下面 AGENTS 里加一行注册
 """
 
+import json
 from collections.abc import Callable, Iterator
 from pathlib import Path
 
@@ -33,6 +34,51 @@ FRONTEND_DIST = Path(__file__).resolve().parent / "frontend" / "dist"
 
 class ChatRequest(BaseModel):
     messages: list[dict]
+
+
+class AlphaConversationChatRequest(BaseModel):
+    message: str
+
+
+alpha_storage = None
+
+
+def _require_alpha_storage():
+    if alpha_storage is None:
+        raise HTTPException(status_code=503, detail="alpha storage is not configured")
+    return alpha_storage
+
+
+def _text_deltas(event: str) -> list[str]:
+    deltas = []
+    for block in event.split("\n\n"):
+        if not block.strip():
+            continue
+        data_line = next(
+            (line.strip() for line in block.splitlines() if line.strip().startswith("data: ")),
+            None,
+        )
+        if data_line is None:
+            continue
+        data = json.loads(data_line.removeprefix("data: "))
+        if data.get("type") == "text":
+            deltas.append(data.get("delta", ""))
+    return deltas
+
+
+def _stream_alpha_and_store_reply(
+    storage,
+    conversation_id: str,
+    messages: list[dict],
+) -> Iterator[str]:
+    reply_parts: list[str] = []
+    for event in alpha.chat(messages):
+        reply_parts.extend(_text_deltas(event))
+        yield event
+
+    reply = "".join(reply_parts).strip()
+    if reply:
+        storage.append_message(conversation_id, "assistant", reply)
 
 
 def create_app(frontend_dist: Path = FRONTEND_DIST) -> FastAPI:
@@ -60,6 +106,27 @@ def create_app(frontend_dist: Path = FRONTEND_DIST) -> FastAPI:
             raise HTTPException(status_code=404, detail=f"unknown agent: {name}")
 
         stream: Iterator[str] = handler(req.messages)
+        return StreamingResponse(stream, media_type="text/event-stream")
+
+    @app.get("/agents/alpha/conversations/{conversation_id}/messages")
+    def alpha_conversation_messages(conversation_id: str) -> dict:
+        storage = _require_alpha_storage()
+        return {"messages": storage.list_messages(conversation_id)}
+
+    @app.post("/agents/alpha/conversations/{conversation_id}/chat")
+    def alpha_conversation_chat(
+        conversation_id: str,
+        req: AlphaConversationChatRequest,
+    ) -> StreamingResponse:
+        message = req.message.strip()
+        if not message:
+            raise HTTPException(status_code=400, detail="message is required")
+
+        storage = _require_alpha_storage()
+        history = storage.list_messages(conversation_id)
+        storage.append_message(conversation_id, "user", message)
+        messages = [*history, {"role": "user", "content": message}]
+        stream = _stream_alpha_and_store_reply(storage, conversation_id, messages)
         return StreamingResponse(stream, media_type="text/event-stream")
 
     index_html = frontend_dist / "index.html"
