@@ -1,7 +1,6 @@
 """S1 能力边界最小回归：只守路由分支和 chat 编排，不联网。
 
-这些测试是 TDD 的 RED 阶段：当前生产代码还没有 `intent.py`，`chat()` 也还在
-直连 OpenAI，所以失败是预期的。等 S1 实现后，它们应该转绿。
+这些测试最初用于 TDD 的 RED 阶段；S1 实现后，它们作为最小回归保留。
 
 测试边界：
 - 不测 prompt 文案质量。
@@ -25,8 +24,8 @@ from agents.alpha._core import llm  # noqa: E402
 def _load_intent():
     """加载 S1 新模块。
 
-    当前失败在这里是正确的：它说明 S1 还没有实现 `agents.alpha._core.intent`。
-    如果失败信息不是缺模块，而是 Python path/IDEA 配置错误，才需要排查环境。
+    如果这里失败，通常说明 S1 路由模块缺失；若失败信息不是缺模块，而是
+    Python path/IDEA 配置错误，才需要排查环境。
     """
     try:
         return importlib.import_module("agents.alpha._core.intent")
