@@ -86,3 +86,33 @@ def test_list_messages_reads_one_conversation_in_insert_order(monkeypatch):
         {"role": "user", "content": "周六去杭州"},
         {"role": "assistant", "content": "Alpha ready."},
     ]
+
+
+def test_list_conversations_returns_recent_conversations(monkeypatch):
+    """list_conversations 应返回最近会话和首条 user 消息摘要。"""
+    storage = importlib.import_module("agents.alpha._core.storage")
+    calls = []
+    rows = [
+        ("conv-2", "上海一日游", "2026-06-06T10:00:00+08:00"),
+        ("conv-1", "周六去杭州", "2026-06-06T09:00:00+08:00"),
+    ]
+    monkeypatch.setattr(storage, "_connect", lambda: _Connection(calls, rows))
+
+    conversations = storage.list_conversations()
+
+    sql, params = calls[-1]
+    assert "GROUP BY conversation_id" in sql
+    assert "ORDER BY MAX(id) DESC" in sql
+    assert params == (20,)
+    assert conversations == [
+        {
+            "conversation_id": "conv-2",
+            "title": "上海一日游",
+            "updated_at": "2026-06-06T10:00:00+08:00",
+        },
+        {
+            "conversation_id": "conv-1",
+            "title": "周六去杭州",
+            "updated_at": "2026-06-06T09:00:00+08:00",
+        },
+    ]

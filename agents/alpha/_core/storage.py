@@ -60,3 +60,33 @@ def list_messages(conversation_id: str) -> list[dict]:
             (conversation_id,),
         )
         return [{"role": role, "content": content} for role, content in cur.fetchall()]
+
+
+def list_conversations(limit: int = 20) -> list[dict]:
+    with _connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT
+              conversation_id,
+              COALESCE(
+                (ARRAY_AGG(content ORDER BY id) FILTER (WHERE role = 'user'))[1],
+                '未命名会话'
+              ) AS title,
+              MAX(created_at) AS updated_at
+            FROM alpha_messages
+            GROUP BY conversation_id
+            ORDER BY MAX(id) DESC
+            LIMIT %s
+            """,
+            (limit,),
+        )
+        return [
+            {
+                "conversation_id": conversation_id,
+                "title": title[:24],
+                "updated_at": updated_at.isoformat()
+                if hasattr(updated_at, "isoformat")
+                else updated_at,
+            }
+            for conversation_id, title, updated_at in cur.fetchall()
+        ]
