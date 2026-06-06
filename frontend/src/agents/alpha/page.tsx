@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Loader2, Plus, Send } from "lucide-react"
+import { History, Loader2, Plus, Send } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
-import { fetchAlphaConversationMessages, streamAlphaConversationChat } from "./api"
-import type { AlphaMessage } from "./types"
+import {
+  fetchAlphaConversationMessages,
+  fetchAlphaConversations,
+  streamAlphaConversationChat,
+} from "./api"
+import type { AlphaConversation, AlphaMessage } from "./types"
 
 const initialMessages: AlphaMessage[] = [{ role: "assistant", content: "Alpha ready." }]
 const conversationStorageKey = "agent-minimal.alpha.conversation-id"
@@ -33,6 +37,16 @@ export function AlphaPage() {
             New
           </Button>
         </div>
+        <ConversationList
+          conversations={chat.conversations}
+          currentConversationId={chat.conversationId}
+          disabled={chat.isSending || chat.isLoadingHistory}
+          isLoading={chat.isLoadingConversations}
+          onSelect={chat.openConversation}
+        />
+        {chat.conversationListError ? (
+          <p className="mt-2 text-xs text-destructive">{chat.conversationListError}</p>
+        ) : null}
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto rounded-md border p-4">
@@ -77,15 +91,39 @@ export function AlphaPage() {
 
 function useAlphaChat() {
   const [conversationId, setConversationId] = useState(loadConversationId)
+  const [conversations, setConversations] = useState<AlphaConversation[]>([])
   const [messages, setMessages] = useState<AlphaMessage[]>(initialMessages)
   const [input, setInput] = useState("")
   const [error, setError] = useState("")
   const [isSending, setIsSending] = useState(false)
   const [isLoadingHistory, setIsLoadingHistory] = useState(false)
+  const [isLoadingConversations, setIsLoadingConversations] = useState(false)
+  const [conversationListError, setConversationListError] = useState("")
   const canSend = useMemo(
     () => input.trim().length > 0 && !isSending && !isLoadingHistory,
     [input, isLoadingHistory, isSending],
   )
+
+  const refreshConversations = useCallback(async (signal?: AbortSignal) => {
+    setIsLoadingConversations(true)
+    setConversationListError("")
+
+    try {
+      setConversations(await fetchAlphaConversations({ signal }))
+    } catch (err) {
+      if (signal?.aborted) return
+      setConversationListError(err instanceof Error ? err.message : "读取 alpha 会话列表失败")
+    } finally {
+      if (!signal?.aborted) setIsLoadingConversations(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    void refreshConversations(controller.signal)
+
+    return () => controller.abort()
+  }, [refreshConversations])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -144,6 +182,7 @@ function useAlphaChat() {
               : message,
           ),
         )
+        void refreshConversations()
       } catch (err) {
         setError(err instanceof Error ? err.message : "alpha chat request failed")
         setMessages(requestMessages)
@@ -151,7 +190,7 @@ function useAlphaChat() {
         setIsSending(false)
       }
     },
-    [canSend, conversationId, input, messages],
+    [canSend, conversationId, input, messages, refreshConversations],
   )
 
   const startNewConversation = useCallback(() => {
@@ -163,16 +202,34 @@ function useAlphaChat() {
     setMessages(initialMessages)
   }, [])
 
+  const openConversation = useCallback(
+    (nextId: string) => {
+      if (nextId === conversationId) return
+
+      saveConversationId(nextId)
+      setConversationId(nextId)
+      setInput("")
+      setError("")
+      setMessages(initialMessages)
+    },
+    [conversationId],
+  )
+
   return {
+    conversationId,
+    conversations,
     messages,
     input,
     error,
     isSending,
     isLoadingHistory,
+    isLoadingConversations,
+    conversationListError,
     canSend,
     setInput,
     sendMessage,
     startNewConversation,
+    openConversation,
   }
 }
 
@@ -192,6 +249,73 @@ function saveConversationId(id: string) {
 function createConversationId() {
   if (window.crypto?.randomUUID) return window.crypto.randomUUID()
   return `alpha-${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
+function ConversationList({
+  conversations,
+  currentConversationId,
+  disabled,
+  isLoading,
+  onSelect,
+}: {
+  conversations: AlphaConversation[]
+  currentConversationId: string
+  disabled: boolean
+  isLoading: boolean
+  onSelect: (conversationId: string) => void
+}) {
+  if (conversations.length === 0 && !isLoading) return null
+
+  return (
+    <div className="mt-3 border-t pt-3">
+      <div className="mb-2 flex items-center gap-2 text-xs font-medium text-muted-foreground">
+        <History className="h-3.5 w-3.5" />
+        Recent conversations
+      </div>
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {conversations.map((conversation) => {
+          const isCurrent = conversation.conversation_id === currentConversationId
+
+          return (
+            <button
+              className={cn(
+                "flex w-[180px] flex-shrink-0 flex-col rounded-md border px-3 py-2 text-left text-sm transition-colors",
+                "hover:border-primary/60 hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60",
+                isCurrent ? "border-primary bg-primary/5" : "bg-background",
+              )}
+              disabled={disabled}
+              key={conversation.conversation_id}
+              onClick={() => onSelect(conversation.conversation_id)}
+              type="button"
+            >
+              <span className="w-full truncate font-medium">{conversation.title}</span>
+              <span className="mt-1 text-xs text-muted-foreground">
+                {formatConversationTime(conversation.updated_at)}
+              </span>
+            </button>
+          )
+        })}
+        {isLoading ? (
+          <div className="flex w-[180px] flex-shrink-0 items-center gap-2 rounded-md border px-3 py-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading...
+          </div>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+function formatConversationTime(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ""
+
+  return new Intl.DateTimeFormat("zh-CN", {
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date)
 }
 
 function MessageBubble({ message }: { message: AlphaMessage }) {
