@@ -3,7 +3,7 @@
 import json
 from collections.abc import Iterator
 
-from agents.alpha._core import intent, itinerary, llm
+from agents.alpha._core import intent, itinerary, llm, understanding
 
 SYSTEM_PROMPT = "你是一个友好的中文助手,回答简洁。"
 OUT_OF_SCOPE_REPLY = (
@@ -29,6 +29,13 @@ def chat(messages: list[dict]) -> Iterator[str]:
         return
 
     if kind == "plan":
+        slots = understanding.extract(messages)
+        missing_fields = understanding.missing(slots)
+        if missing_fields:
+            yield _text(understanding.ask(missing_fields))
+            yield _done()
+            return
+
         yield _text(itinerary.generate(messages))
         yield _done()
         return
