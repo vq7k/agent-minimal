@@ -16,6 +16,27 @@ def _connect():
     return psycopg.connect(_database_url())
 
 
+def ensure_schema() -> None:
+    with _connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS alpha_messages (
+              id BIGSERIAL PRIMARY KEY,
+              conversation_id TEXT NOT NULL,
+              role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+              content TEXT NOT NULL,
+              created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+            )
+            """
+        )
+        cur.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_alpha_messages_conversation_id_id
+            ON alpha_messages (conversation_id, id)
+            """
+        )
+
+
 def append_message(conversation_id: str, role: str, content: str) -> None:
     with _connect() as conn, conn.cursor() as cur:
         cur.execute(

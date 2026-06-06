@@ -40,6 +40,22 @@ class _Connection:
         return _Cursor(self.calls, self.rows)
 
 
+def test_ensure_schema_creates_message_table_and_index(monkeypatch):
+    """ensure_schema 应创建 alpha_messages 表和按会话读取需要的索引。"""
+    storage = importlib.import_module("agents.alpha._core.storage")
+    calls = []
+    monkeypatch.setattr(storage, "_connect", lambda: _Connection(calls))
+
+    storage.ensure_schema()
+
+    statements = "\n".join(sql for sql, _params in calls)
+    assert "CREATE TABLE IF NOT EXISTS alpha_messages" in statements
+    assert "conversation_id TEXT NOT NULL" in statements
+    assert "role TEXT NOT NULL CHECK" in statements
+    assert "CREATE INDEX IF NOT EXISTS idx_alpha_messages_conversation_id_id" in statements
+    assert "ON alpha_messages (conversation_id, id)" in statements
+
+
 def test_append_message_inserts_conversation_scoped_message(monkeypatch):
     """append_message 应把 conversation_id/role/content 一起写入 alpha_messages。"""
     storage = importlib.import_module("agents.alpha._core.storage")
