@@ -71,6 +71,12 @@ bash infra/scripts/provision-shared-db.sh agent_minimal
 DATABASE_URL=postgresql://agent_minimal:<密码>@localhost:5450/agent_minimal
 ```
 
+本地直连线上库（开发期，给 DB 可视化工具和多人本地开发使用）：
+
+```bash
+DATABASE_URL=postgresql://agent_minimal:<密码>@<公网主机>:5450/agent_minimal
+```
+
 生产容器：
 
 ```bash
@@ -80,8 +86,9 @@ DATABASE_URL=postgresql://agent_minimal:<密码>@ftai-postgres:5432/agent_minima
 原因：
 
 - 本地走 host 端口映射 `localhost:5450`。
+- 本地直连线上库走公网主机 `:5450`，密码从项目 `.env` 获取。
 - 生产和 `ftai-postgres` 在同一个 Docker 网络 `infra_ftai-net`。
-- 不开放公网数据库端口。
+- 生产容器优先使用 Docker 内网，不依赖公网地址。
 
 ---
 
@@ -200,9 +207,9 @@ GET /agents/alpha/conversations/{conversation_id}/messages
 
 - 使用 `agent_minimal` role 连接 `agent_minimal` database。
 - 不保存、不使用 `ftai` superuser。
-- 不开放公网数据库端口。
-- 生产只走 Docker 内网 `ftai-postgres:5432`。
-- 远程排查生产库时走 SSH 隧道，不改安全组。
+- 开发期允许公网 `:5450` 直连，便于本地 DB 工具和多人开发。
+- 公网直连只使用业务 role，不使用 superuser。
+- 生产容器仍优先走 Docker 内网 `ftai-postgres:5432`。
 
 ---
 
@@ -257,7 +264,14 @@ DATABASE_URL='postgresql://agent_minimal:<密码>@localhost:5450/agent_minimal' 
   uv run --with 'psycopg[binary]>=3' python scripts/demo_online_db.py
 ```
 
-本地测生产 PG，先开 SSH 隧道：
+本地测线上 PG，开发期可直连公网：
+
+```bash
+DATABASE_URL='postgresql://agent_minimal:<密码>@<公网主机>:5450/agent_minimal' \
+  uv run --with 'psycopg[binary]>=3' python scripts/demo_online_db.py
+```
+
+如果公网不可用，再用 SSH 隧道：
 
 ```bash
 ssh -i "$SSH_KEY" -N -L 15432:127.0.0.1:5450 "$SSH_USER@$SSH_HOST"
