@@ -20,6 +20,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from agents import alpha, bravo, charlie, delta
+from agents.alpha._core import storage as alpha_storage
 
 # 注册表:agent 名 -> 该模块的 chat 函数
 AGENTS: dict[str, Callable[[list[dict]], Iterator[str]]] = {
@@ -38,9 +39,6 @@ class ChatRequest(BaseModel):
 
 class AlphaConversationChatRequest(BaseModel):
     message: str
-
-
-alpha_storage = None
 
 
 def _require_alpha_storage():

@@ -51,6 +51,25 @@ def test_alpha_conversation_history_endpoint_reads_persisted_messages(monkeypatc
     }
 
 
+def test_alpha_conversation_history_endpoint_uses_default_storage(monkeypatch):
+    """生产路径应默认接入 alpha storage，而不是停在未配置状态。"""
+    assert server.alpha_storage is not None
+    monkeypatch.setattr(
+        server.alpha_storage,
+        "list_messages",
+        lambda conversation_id: [{"role": "user", "content": f"{conversation_id}: ok"}],
+    )
+
+    client = TestClient(server.create_app())
+
+    response = client.get("/agents/alpha/conversations/default-storage/messages")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "messages": [{"role": "user", "content": "default-storage: ok"}]
+    }
+
+
 def test_alpha_conversation_chat_uses_history_and_persists_both_messages(monkeypatch):
     """POST conversation chat 应用 DB 历史调用 alpha，并写入 user/assistant。"""
     append_calls = []
