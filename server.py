@@ -113,6 +113,11 @@ def create_app(frontend_dist: Path = FRONTEND_DIST) -> FastAPI:
         stream: Iterator[str] = handler(req.messages)
         return StreamingResponse(stream, media_type="text/event-stream")
 
+    @app.get("/agents/alpha/conversations")
+    def alpha_conversations() -> dict:
+        storage = _require_alpha_storage()
+        return {"conversations": storage.list_conversations()}
+
     @app.get("/agents/alpha/conversations/{conversation_id}/messages")
     def alpha_conversation_messages(conversation_id: str) -> dict:
         storage = _require_alpha_storage()

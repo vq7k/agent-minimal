@@ -85,6 +85,50 @@ def test_create_app_ensures_alpha_storage_schema_on_startup(monkeypatch):
     assert calls == ["ensure_schema"]
 
 
+def test_alpha_conversations_endpoint_lists_recent_conversations(monkeypatch):
+    """GET conversations 应返回最近会话列表，给 New 后切回旧会话用。"""
+    monkeypatch.setattr(
+        server,
+        "alpha_storage",
+        SimpleNamespace(
+            ensure_schema=lambda: None,
+            list_conversations=lambda: [
+                {
+                    "conversation_id": "conv-2",
+                    "title": "上海一日游",
+                    "updated_at": "2026-06-06T10:00:00+08:00",
+                },
+                {
+                    "conversation_id": "conv-1",
+                    "title": "周六去杭州",
+                    "updated_at": "2026-06-06T09:00:00+08:00",
+                },
+            ],
+        ),
+    )
+
+    client = TestClient(server.create_app())
+
+    response = client.get("/agents/alpha/conversations")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/json")
+    assert response.json() == {
+        "conversations": [
+            {
+                "conversation_id": "conv-2",
+                "title": "上海一日游",
+                "updated_at": "2026-06-06T10:00:00+08:00",
+            },
+            {
+                "conversation_id": "conv-1",
+                "title": "周六去杭州",
+                "updated_at": "2026-06-06T09:00:00+08:00",
+            },
+        ]
+    }
+
+
 def test_alpha_conversation_chat_uses_history_and_persists_both_messages(monkeypatch):
     """POST conversation chat 应用 DB 历史调用 alpha，并写入 user/assistant。"""
     append_calls = []
