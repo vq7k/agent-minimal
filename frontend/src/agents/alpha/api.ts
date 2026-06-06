@@ -1,5 +1,7 @@
 import type {
+  AlphaConversation,
   AlphaMessage,
+  FetchAlphaConversationsOptions,
   FetchAlphaConversationMessagesOptions,
   StreamAlphaChatOptions,
   StreamAlphaConversationChatOptions,
@@ -39,6 +41,26 @@ export async function streamAlphaConversationChat({
   })
 
   return readAlphaStream(response, onText)
+}
+
+export async function fetchAlphaConversations({
+  fetchImpl = fetch,
+  signal,
+}: FetchAlphaConversationsOptions = {}): Promise<AlphaConversation[]> {
+  const response = await fetchImpl("/agents/alpha/conversations", {
+    signal,
+  })
+
+  if (!response.ok) {
+    throw new Error(`读取 alpha 会话列表失败：${response.status}`)
+  }
+
+  const data = (await response.json()) as { conversations?: AlphaConversation[] }
+  if (!Array.isArray(data.conversations)) {
+    throw new Error("alpha 会话列表响应格式不正确")
+  }
+
+  return data.conversations
 }
 
 export async function fetchAlphaConversationMessages({

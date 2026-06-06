@@ -5,6 +5,17 @@ export type AlphaMessage = {
   content: string
 }
 
+export type AlphaConversation = {
+  conversation_id: string
+  title: string
+  updated_at: string
+}
+
+export type FetchAlphaConversationsOptions = {
+  fetchImpl?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
+  signal?: AbortSignal
+}
+
 export type StreamAlphaChatOptions = {
   messages: AlphaMessage[]
   onText: (content: string) => void

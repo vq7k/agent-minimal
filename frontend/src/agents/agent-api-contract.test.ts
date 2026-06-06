@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import type { AlphaMessage } from "./alpha/types"
 import {
+  fetchAlphaConversations,
   fetchAlphaConversationMessages,
   streamAlphaChat,
   streamAlphaConversationChat,
@@ -89,6 +90,28 @@ describe("agent api boundaries", () => {
 
     expect(result).toEqual(messages)
     expect(fetchMock).toHaveBeenCalledWith("/agents/alpha/conversations/conv-1/messages", {
+      signal: undefined,
+    })
+  })
+
+  it("loads alpha recent conversations", async () => {
+    const conversations = [
+      {
+        conversation_id: "conv-2",
+        title: "上海一日游",
+        updated_at: "2026-06-06T10:00:00+08:00",
+      },
+    ]
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ conversations }), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    )
+
+    const result = await fetchAlphaConversations({ fetchImpl: fetchMock })
+
+    expect(result).toEqual(conversations)
+    expect(fetchMock).toHaveBeenCalledWith("/agents/alpha/conversations", {
       signal: undefined,
     })
   })
