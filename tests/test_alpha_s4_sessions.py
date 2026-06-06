@@ -70,6 +70,21 @@ def test_alpha_conversation_history_endpoint_uses_default_storage(monkeypatch):
     }
 
 
+def test_create_app_ensures_alpha_storage_schema_on_startup(monkeypatch):
+    """应用启动时应准备 alpha_messages 表，避免首次请求撞到缺表。"""
+    calls = []
+    monkeypatch.setattr(
+        server,
+        "alpha_storage",
+        SimpleNamespace(ensure_schema=lambda: calls.append("ensure_schema")),
+    )
+
+    with TestClient(server.create_app()):
+        pass
+
+    assert calls == ["ensure_schema"]
+
+
 def test_alpha_conversation_chat_uses_history_and_persists_both_messages(monkeypatch):
     """POST conversation chat 应用 DB 历史调用 alpha，并写入 user/assistant。"""
     append_calls = []

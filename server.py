@@ -11,6 +11,7 @@
 
 import json
 from collections.abc import Callable, Iterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -79,8 +80,14 @@ def _stream_alpha_and_store_reply(
         storage.append_message(conversation_id, "assistant", reply)
 
 
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    _require_alpha_storage().ensure_schema()
+    yield
+
+
 def create_app(frontend_dist: Path = FRONTEND_DIST) -> FastAPI:
-    app = FastAPI(title="agent-minimal")
+    app = FastAPI(title="agent-minimal", lifespan=lifespan)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],  # 联调放开,上线按前端域名收紧
