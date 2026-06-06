@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { History, Loader2, Plus, Send } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
@@ -267,7 +268,8 @@ function ConversationList({
   if (conversations.length === 0 && !isLoading) return null
 
   return (
-    <div className="mt-3 border-t pt-3">
+    <div className="mt-3">
+      <Separator className="mb-3" />
       <div className="mb-2 flex items-center gap-2 text-xs font-medium text-muted-foreground">
         <History className="h-3.5 w-3.5" />
         Recent conversations
@@ -277,22 +279,23 @@ function ConversationList({
           const isCurrent = conversation.conversation_id === currentConversationId
 
           return (
-            <button
+            <Button
               className={cn(
-                "flex w-[180px] flex-shrink-0 flex-col rounded-md border px-3 py-2 text-left text-sm transition-colors",
-                "hover:border-primary/60 hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60",
-                isCurrent ? "border-primary bg-primary/5" : "bg-background",
+                "h-auto w-[180px] flex-shrink-0 flex-col items-start justify-start whitespace-normal px-3 py-2 text-left",
+                "hover:border-primary/60",
+                isCurrent && "border-primary bg-primary/5",
               )}
               disabled={disabled}
               key={conversation.conversation_id}
               onClick={() => onSelect(conversation.conversation_id)}
               type="button"
+              variant="outline"
             >
               <span className="w-full truncate font-medium">{conversation.title}</span>
               <span className="mt-1 text-xs text-muted-foreground">
                 {formatConversationTime(conversation.updated_at)}
               </span>
-            </button>
+            </Button>
           )
         })}
         {isLoading ? (
