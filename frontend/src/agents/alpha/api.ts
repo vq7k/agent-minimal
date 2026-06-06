@@ -1,4 +1,8 @@
-import type { StreamAlphaChatOptions } from "./types"
+import type {
+  FetchAlphaConversationMessagesOptions,
+  StreamAlphaChatOptions,
+  StreamAlphaConversationChatOptions,
+} from "./types"
 
 type AlphaStreamEvent = { type: "text"; delta: string } | { type: "done" }
 
@@ -16,6 +20,51 @@ export async function streamAlphaChat({
     signal,
   })
 
+  return readAlphaStream(response, onText)
+}
+
+export async function streamAlphaConversationChat({
+  conversationId,
+  message,
+  onText,
+  fetchImpl = fetch,
+  signal,
+}: StreamAlphaConversationChatOptions): Promise<string> {
+  const response = await fetchImpl(`/agents/alpha/conversations/${conversationId}/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message }),
+    signal,
+  })
+
+  return readAlphaStream(response, onText)
+}
+
+export async function fetchAlphaConversationMessages({
+  conversationId,
+  fetchImpl = fetch,
+  signal,
+}: FetchAlphaConversationMessagesOptions) {
+  const response = await fetchImpl(`/agents/alpha/conversations/${conversationId}/messages`, {
+    signal,
+  })
+
+  if (!response.ok) {
+    throw new Error(`读取 alpha 会话历史失败：${response.status}`)
+  }
+
+  const data = (await response.json()) as { messages?: unknown }
+  if (!Array.isArray(data.messages)) {
+    throw new Error("alpha 会话历史响应格式不正确")
+  }
+
+  return data.messages
+}
+
+async function readAlphaStream(
+  response: Response,
+  onText: (content: string) => void,
+): Promise<string> {
   if (!response.ok) throw new Error(`alpha chat request failed: ${response.status}`)
   if (!response.body) throw new Error("alpha chat response body is empty")
 
