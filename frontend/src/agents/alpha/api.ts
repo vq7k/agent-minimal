@@ -1,4 +1,5 @@
 import type {
+  AlphaMessage,
   FetchAlphaConversationMessagesOptions,
   StreamAlphaChatOptions,
   StreamAlphaConversationChatOptions,
@@ -44,7 +45,7 @@ export async function fetchAlphaConversationMessages({
   conversationId,
   fetchImpl = fetch,
   signal,
-}: FetchAlphaConversationMessagesOptions) {
+}: FetchAlphaConversationMessagesOptions): Promise<AlphaMessage[]> {
   const response = await fetchImpl(`/agents/alpha/conversations/${conversationId}/messages`, {
     signal,
   })
@@ -53,7 +54,7 @@ export async function fetchAlphaConversationMessages({
     throw new Error(`读取 alpha 会话历史失败：${response.status}`)
   }
 
-  const data = (await response.json()) as { messages?: unknown }
+  const data = (await response.json()) as { messages?: AlphaMessage[] }
   if (!Array.isArray(data.messages)) {
     throw new Error("alpha 会话历史响应格式不正确")
   }
